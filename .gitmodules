@@ -1,0 +1,9 @@
+[submodule "lib/FreeRTOS-Kernel"]
+	path = lib/FreeRTOS-Kernel
+	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
+[submodule "lib/pico-uart-comms"]
+	path = lib/pico-uart-comms
+	url = https://github.com/eremiticengineer/pico-uart-comms
+[submodule "lib/pico-lora"]
+	path = lib/pico-lora
+	url = https://github.com/eremiticengineer/pico-lora
