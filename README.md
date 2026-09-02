@@ -13,7 +13,6 @@ git clone https://github.com/eremiticengineer/pico-lora-broadcaster
 cd pico-lora-broadcaster
 git submodule update --init --progress --jobs 4
 git -C lib/FreeRTOS-Kernel submodule update --init --recursive --progress
-git -C lib/fmt submodule update --init --recursive --progress
 ```
 
 ## FreeRTOS-Kernal setup for new projects
