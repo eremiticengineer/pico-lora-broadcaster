@@ -221,6 +221,14 @@ int main( void )
     if (lora.init(config)) {
         printf("SX1278 detected, version: 0x%02X\n", lora.getVersion());
 
+        lora_send_queue = xQueueCreate(8, sizeof(LoRaMessage));
+        if (lora_send_queue == nullptr) {
+            printf("Failed to create LoRa queue ... not starting\n");
+            while (true) {
+                tight_loop_contents();
+            }
+        }
+
         xTaskCreate(uart_receive_task, "UartReceiveTask", 512, (void*)&uartComms, UART_RECEIVE_TASK_PRIORITY, nullptr);
         
         xTaskCreate(lora_send_task, "LoRaSendTask", 512, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
