@@ -1,6 +1,21 @@
 cmake_minimum_required(VERSION 3.13)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(PROJECT pico_lora_broadcaster)
+
+# ---------------------------------------------------------
+# Select board before importing the Pico SDK
+# ---------------------------------------------------------
+if(DEVICE STREQUAL "seeed_xiao_rp2040")
+    set(PICO_BOARD seeed_xiao_rp2040 CACHE STRING "Board type" FORCE)
+elseif(DEVICE STREQUAL "pico")
+    set(PICO_BOARD pico CACHE STRING "Board type" FORCE)
+elseif(DEVICE STREQUAL "pico2")
+    set(PICO_BOARD pico2 CACHE STRING "Board type" FORCE)
+else()
+    message(FATAL_ERROR "Unknown DEVICE='${DEVICE}'. Use pico2 or seeed_xiao_rp2040.")
+endif()
 
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
@@ -10,14 +25,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 23)
 
 pico_sdk_init()
-
-if(DEVICE STREQUAL "seeed_xiao_rp2040")
-    set(PICO_BOARD pico CACHE STRING "Board type" FORCE)
-elseif(DEVICE STREQUAL "pico2")
-    set(PICO_BOARD pico2 CACHE STRING "Board type" FORCE)
-else()
-    message(FATAL_ERROR "Unknown DEVICE='${DEVICE}'. Use pico2 or xiao.")
-endif()
 
 message(STATUS "DEVICE=${DEVICE}")
 message(STATUS "PICO_BOARD=${PICO_BOARD}")
@@ -48,7 +55,6 @@ add_subdirectory(lib/pico-lora)
 
 target_link_libraries(${PROJECT}
     pico_stdlib
-    hardware_spi
     FreeRTOS-Kernel-Heap4
     pico_uart_comms
     pico_lora

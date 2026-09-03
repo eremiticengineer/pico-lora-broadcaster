@@ -1,21 +1,33 @@
 #!/bin/bash
 
-# Use the first command-line argument ($1), but if it is missing or empty, use pico2 instead
-DEVICE=${1:-pico2}
+DEVICE="$1"
 
 case "$DEVICE" in
-    pico2|seeed_xiao_rp2040)
+    pico|pico2|seeed_xiao_rp2040)
+        ;;
+    "")
+        echo "No device specified."
+        echo "Supported devices:"
+        echo "  pico"
+        echo "  pico2"
+        echo "  seeed_xiao_rp2040"
+        exit 1
         ;;
     *)
         echo "Unknown device: $DEVICE"
-        echo "Use: pico2 or seeed_xiao_rp2040"
+        echo "Supported devices:"
+        echo "  pico"
+        echo "  pico2"
+        echo "  seeed_xiao_rp2040"
         exit 1
         ;;
 esac
 
 BUILD_DIR="build-${DEVICE}"
+
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
+
 cmake -DDEVICE="$DEVICE" ..
 make -j4
