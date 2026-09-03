@@ -80,52 +80,6 @@ uint32_t create_lora_session_id() {
     return value;
 }
 
-void lora_send_task(void* params) {
-    SX1278* pLora = static_cast<SX1278*>(params);
-
-    uint32_t sequence = 0;
-
-    LoRaMessage queuedMessage;
-
-    while (true) {
-        if (xQueueReceive(lora_send_queue, &queuedMessage, portMAX_DELAY) == pdTRUE) {
-            uint32_t currentSequence = sequence++;
-
-            PacketHeader header {
-                .sequence = currentSequence,
-                .version = 1,
-                .type = PacketType::Status
-            };
-
-            std::string message(queuedMessage.data);
-            std::vector<uint8_t> packet(sizeof(PacketHeader) + message.size());
-
-            /*
-            * Packet layout:
-            *
-            * [ PacketHeader ][ payload bytes ]
-            */
-
-            std::memcpy(packet.data(), &header, sizeof(PacketHeader));
-
-            std::memcpy(packet.data() + sizeof(PacketHeader), message.data(), message.size());
-
-            if (pLora->send(packet.data(), packet.size())) {
-                printf("TX seq=%lu version=%u type=%u: %s\n",
-                    static_cast<unsigned long>(currentSequence),
-                    static_cast<unsigned>(header.version),
-                    static_cast<unsigned>(header.type),
-                    message.c_str());
-            }
-            else {
-                printf("TX failed seq=%lu\n", static_cast<unsigned long>(currentSequence));
-            }
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
 void lora_send_weather_data_task(void* params) {
     SX1278* pLora = static_cast<SX1278*>(params);
 
@@ -303,7 +257,6 @@ int main( void )
 
         xTaskCreate(uart_receive_task, "UartReceiveTask", 512, (void*)&uartComms, UART_RECEIVE_TASK_PRIORITY, nullptr);
         
-        //xTaskCreate(lora_send_task, "LoRaSendTask", 512, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
         xTaskCreate(lora_send_weather_data_task, "LoRaSendWeatherDataTask", 2048, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
         
         vTaskStartScheduler();
