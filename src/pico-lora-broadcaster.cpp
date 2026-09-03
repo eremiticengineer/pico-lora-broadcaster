@@ -103,48 +103,52 @@ void lora_send_weather_data_task(void* params) {
 
     uint32_t sequence = 0;
 
+    LoRaMessage queuedMessage;
+
     while (true) {
-        uint32_t currentSequence = sequence++;
+        if (xQueueReceive(lora_send_queue, &queuedMessage, portMAX_DELAY) == pdTRUE) {
+            uint32_t currentSequence = sequence++;
 
-        PacketHeader header {
-            .sequence = currentSequence,
-            .version = 1,
-            .type = PacketType::Weather
-        };
+            PacketHeader header {
+                .sequence = currentSequence,
+                .version = 1,
+                .type = PacketType::Weather
+            };
 
-        WeatherPayload weather {
-            .temperature = 12.4f,
-            .humidity = 76.2f,
-            .pressure = 1008.6f,
+            WeatherPayload weather {
+                .temperature = 12.4f,
+                .humidity = 76.2f,
+                .pressure = 1008.6f,
 
-            .windSpeed = 8.7f,
-            .windGust = 14.2f,
-            .windDirectionDegrees = 23,
+                .windSpeed = 8.7f,
+                .windGust = 14.2f,
+                .windDirectionDegrees = 23,
 
-            .rainfall = 1.4f,
+                .rainfall = 1.4f,
 
-            .lux = 12500.0f,
+                .lux = 12500.0f,
 
-            .batteryVoltage = 4.87f,
+                .batteryVoltage = 4.87f,
 
-            .timestamp = 1788004800
-        };
+                .timestamp = 1788004800
+            };
 
-        std::vector<uint8_t> packet(sizeof(PacketHeader) + sizeof(WeatherPayload));
+            std::vector<uint8_t> packet(sizeof(PacketHeader) + sizeof(WeatherPayload));
 
-        std::memcpy(packet.data(), &header, sizeof(PacketHeader));
+            std::memcpy(packet.data(), &header, sizeof(PacketHeader));
 
-        std::memcpy(packet.data() + sizeof(PacketHeader), &weather, sizeof(WeatherPayload));
+            std::memcpy(packet.data() + sizeof(PacketHeader), &weather, sizeof(WeatherPayload));
 
-        if (pLora->send(packet.data(), packet.size())) {
-            printf("TX seq=%lu temp=%.1f humidity=%.1f pressure=%.1f\n",
-                static_cast<unsigned long>(currentSequence),
-                weather.temperature,
-                weather.humidity,
-                weather.pressure);
-        }
-        else {
-            printf("TX failed seq=%lu\n", static_cast<unsigned long>(currentSequence));
+            if (pLora->send(packet.data(), packet.size())) {
+                printf("TX seq=%lu temp=%.1f humidity=%.1f pressure=%.1f\n",
+                    static_cast<unsigned long>(currentSequence),
+                    weather.temperature,
+                    weather.humidity,
+                    weather.pressure);
+            }
+            else {
+                printf("TX failed seq=%lu\n", static_cast<unsigned long>(currentSequence));
+            }
         }
 
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -231,8 +235,8 @@ int main( void )
 
         xTaskCreate(uart_receive_task, "UartReceiveTask", 512, (void*)&uartComms, UART_RECEIVE_TASK_PRIORITY, nullptr);
         
-        xTaskCreate(lora_send_task, "LoRaSendTask", 512, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
-        //xTaskCreate(lora_send_weather_data_task, "LoRaSendWeatherDataTask", 512, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
+        //xTaskCreate(lora_send_task, "LoRaSendTask", 512, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
+        xTaskCreate(lora_send_weather_data_task, "LoRaSendWeatherDataTask", 512, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
         
         vTaskStartScheduler();
     }
