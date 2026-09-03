@@ -290,14 +290,6 @@ int main( void )
         lora_config::MISO
     );
 
-    printf(
-    "UART=%s BAUD=%u TX=%u RX=%u\n",
-    uart_config::UART_NUM == uart0 ? "uart0" : "uart1",
-    uart_config::BAUD,
-    uart_config::TX,
-    uart_config::RX
-);
-
     if (lora.init(config)) {
         printf("SX1278 detected, version: 0x%02X\n", lora.getVersion());
 
