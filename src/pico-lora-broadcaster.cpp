@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "pico/time.h"
 #include "hardware/spi.h"
+#include "hardware/structs/rosc.h"
 
 #include <string>
 #include <cstring>
 #include <vector>
+#include <cstdlib>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -51,6 +54,31 @@ namespace lora_config {
 #else
 #error "No supported DEVICE defined"
 #endif
+
+/*
+ * Create a fairly unique id that can be used as a session id for lora packets.
+ * current microsecond timer
+ * RP2040 ring-oscillator random bits
+ * a RAM address
+ * a small xorshift mix
+ */
+uint32_t create_lora_session_id() {
+    uint32_t value = time_us_32();
+
+    value ^= rosc_hw->randombit << 0;
+    value ^= rosc_hw->randombit << 7;
+    value ^= rosc_hw->randombit << 13;
+    value ^= rosc_hw->randombit << 21;
+    value ^= rosc_hw->randombit << 29;
+
+    value ^= static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&value));
+
+    value ^= value << 13;
+    value ^= value >> 17;
+    value ^= value << 5;
+
+    return value;
+}
 
 void lora_send_task(void* params) {
     SX1278* pLora = static_cast<SX1278*>(params);
@@ -103,6 +131,11 @@ void lora_send_weather_data_task(void* params) {
 
     uint32_t sequence = 0;
 
+    // Session id to prevent duplicate packet warnings at the receiver
+    uint32_t sessionId = create_lora_session_id();
+
+    printf("LoRa session=%lu\n", static_cast<unsigned long>(sessionId));
+
     LoRaMessage queuedMessage;
 
     while (true) {
@@ -111,27 +144,59 @@ void lora_send_weather_data_task(void* params) {
 
             PacketHeader header {
                 .sequence = currentSequence,
+                .sessionId = sessionId,
                 .version = 1,
                 .type = PacketType::Weather
             };
 
-            WeatherPayload weather {
-                .temperature = 12.4f,
-                .humidity = 76.2f,
-                .pressure = 1008.6f,
+            char* p = queuedMessage.data;
+            char* end;
 
-                .windSpeed = 8.7f,
-                .windGust = 14.2f,
-                .windDirectionDegrees = 23,
+            WeatherPayload weather {};
 
-                .rainfall = 1.4f,
+            // 22.3,76.2,1008.6,8.7,14.2,23,1.4,12500.0,4.87,1788004800
 
-                .lux = 12500.0f,
+            weather.temperature = strtof(p, &end);
+            p = end + 1;
 
-                .batteryVoltage = 4.87f,
+            weather.humidity = strtof(p, &end);
+            p = end + 1;
 
-                .timestamp = 1788004800
-            };
+            weather.pressure = strtof(p, &end);
+            p = end + 1;
+
+            weather.windSpeed = strtof(p, &end);
+            p = end + 1;
+
+            weather.windGust = strtof(p, &end);
+            p = end + 1;
+
+            weather.windDirectionDegrees =
+                static_cast<decltype(weather.windDirectionDegrees)>(
+                    strtoul(p, &end, 10)
+                );
+            p = end + 1;
+
+            weather.rainfall = strtof(p, &end);
+            p = end + 1;
+
+            weather.lux = strtof(p, &end);
+            p = end + 1;
+
+            weather.batteryVoltage = strtof(p, &end);
+            p = end + 1;
+
+            weather.timestamp =
+                static_cast<decltype(weather.timestamp)>(
+                    strtoul(p, &end, 10)
+                );
+
+            printf(
+                "parsed temp=%.1f humidity=%.1f pressure=%.1f\n",
+                weather.temperature,
+                weather.humidity,
+                weather.pressure
+            );
 
             std::vector<uint8_t> packet(sizeof(PacketHeader) + sizeof(WeatherPayload));
 
@@ -140,11 +205,22 @@ void lora_send_weather_data_task(void* params) {
             std::memcpy(packet.data() + sizeof(PacketHeader), &weather, sizeof(WeatherPayload));
 
             if (pLora->send(packet.data(), packet.size())) {
-                printf("TX seq=%lu temp=%.1f humidity=%.1f pressure=%.1f\n",
+                printf(
+                    "TX seq=%lu temp=%.1f humidity=%.1f pressure=%.1f "
+                    "wind=%.1f gust=%.1f dir=%u rain=%.1f lux=%.1f "
+                    "battery=%.2f timestamp=%lu\n",
                     static_cast<unsigned long>(currentSequence),
                     weather.temperature,
                     weather.humidity,
-                    weather.pressure);
+                    weather.pressure,
+                    weather.windSpeed,
+                    weather.windGust,
+                    static_cast<unsigned>(weather.windDirectionDegrees),
+                    weather.rainfall,
+                    weather.lux,
+                    weather.batteryVoltage,
+                    static_cast<unsigned long>(weather.timestamp)
+                );
             }
             else {
                 printf("TX failed seq=%lu\n", static_cast<unsigned long>(currentSequence));
@@ -236,7 +312,7 @@ int main( void )
         xTaskCreate(uart_receive_task, "UartReceiveTask", 512, (void*)&uartComms, UART_RECEIVE_TASK_PRIORITY, nullptr);
         
         //xTaskCreate(lora_send_task, "LoRaSendTask", 512, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
-        xTaskCreate(lora_send_weather_data_task, "LoRaSendWeatherDataTask", 512, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
+        xTaskCreate(lora_send_weather_data_task, "LoRaSendWeatherDataTask", 2048, (void*)&lora, LORA_SEND_TASK_PRIORITY, nullptr);
         
         vTaskStartScheduler();
     }
