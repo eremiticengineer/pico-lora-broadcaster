@@ -11,6 +11,7 @@ enum class PacketType : uint8_t {
 
 struct __attribute__((packed)) PacketHeader {
     uint32_t sequence;
+    uint32_t sessionId;
     uint8_t version;
     PacketType type;
 };
@@ -33,7 +34,7 @@ struct __attribute__((packed)) WeatherPayload {
     uint32_t timestamp;             // Unix time (UTC)
 };
 
-static_assert(sizeof(PacketHeader) == 6);
+static_assert(sizeof(PacketHeader) == 10);
 static_assert(sizeof(WeatherPayload) == 38);
 
 inline const char* windDirectionName(uint16_t degrees) {
@@ -127,5 +128,5 @@ struct LoRaStats {
  */
 static_assert(sizeof(float) == 4);
 static_assert(std::numeric_limits<float>::is_iec559);
-static_assert(sizeof(PacketHeader) == 6);
+static_assert(sizeof(PacketHeader) == 10);
 static_assert(sizeof(WeatherPayload) == 38);
