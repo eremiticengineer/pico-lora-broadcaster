@@ -108,15 +108,19 @@ void lora_send_weather_data_task(void* params) {
 
             WeatherPayload weather {};
 
-            // 22.3,76.2,1008.6,8.7,14.2,23,1.4,12500.0,4.87,1788004800
+            weather.timestamp =static_cast<decltype(weather.timestamp)>(strtoul(p, &end, 10));
+            p = end + 1;
 
+            weather.bootId = strtof(p, &end);
+            p = end + 1;
+            
             weather.temperature = strtof(p, &end);
             p = end + 1;
 
-            weather.humidity = strtof(p, &end);
+            weather.pressure = strtof(p, &end);
             p = end + 1;
 
-            weather.pressure = strtof(p, &end);
+            weather.humidity = strtof(p, &end);
             p = end + 1;
 
             weather.windSpeed = strtof(p, &end);
@@ -125,32 +129,17 @@ void lora_send_weather_data_task(void* params) {
             weather.windGust = strtof(p, &end);
             p = end + 1;
 
-            weather.windDirectionDegrees =
-                static_cast<decltype(weather.windDirectionDegrees)>(
-                    strtoul(p, &end, 10)
-                );
-            p = end + 1;
-
-            weather.rainfall = strtof(p, &end);
+            weather.windDirectionDegrees = static_cast<decltype(weather.windDirectionDegrees)>(strtoul(p, &end, 10));
             p = end + 1;
 
             weather.lux = strtof(p, &end);
             p = end + 1;
 
-            weather.batteryVoltage = strtof(p, &end);
+            weather.rainTipsSinceBoot = strtof(p, &end);
             p = end + 1;
 
-            weather.timestamp =
-                static_cast<decltype(weather.timestamp)>(
-                    strtoul(p, &end, 10)
-                );
-
-            printf(
-                "parsed temp=%.1f humidity=%.1f pressure=%.1f\n",
-                weather.temperature,
-                weather.humidity,
-                weather.pressure
-            );
+            weather.batteryVoltage = strtof(p, &end);
+            p = end + 1;
 
             std::vector<uint8_t> packet(sizeof(PacketHeader) + sizeof(WeatherPayload));
 
@@ -160,20 +149,27 @@ void lora_send_weather_data_task(void* params) {
 
             if (pLora->send(packet.data(), packet.size())) {
                 printf(
-                    "TX seq=%lu temp=%.1f humidity=%.1f pressure=%.1f "
-                    "wind=%.1f gust=%.1f dir=%u rain=%.1f lux=%.1f "
-                    "battery=%.2f timestamp=%lu\n",
+                    "TX seq=%lu "
+                    "timestamp=%lu "
+                    "bootId=%d "
+                    "temp=%.1f pressure=%.1f humidity=%.1f "
+                    "wind=%.1f gust=%.1f dir=%u "
+                    "rain=%.1f "
+                    "lux=%.1f "
+                    "battery=%.2f\n",
+
                     static_cast<unsigned long>(currentSequence),
+                    static_cast<unsigned long>(weather.timestamp),
+                    weather.bootId,
                     weather.temperature,
-                    weather.humidity,
                     weather.pressure,
+                    weather.humidity,
                     weather.windSpeed,
                     weather.windGust,
                     static_cast<unsigned>(weather.windDirectionDegrees),
-                    weather.rainfall,
+                    weather.rainTipsSinceBoot,
                     weather.lux,
-                    weather.batteryVoltage,
-                    static_cast<unsigned long>(weather.timestamp)
+                    weather.batteryVoltage
                 );
             }
             else {
