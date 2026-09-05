@@ -239,7 +239,7 @@ int main( void )
     config.crcEnabled = true;
     config.preambleLength = 8;
     config.syncWord = 0x12;
-    config.txPowerDbm = 17;
+    config.txPowerDbm = 10;
 
     SX1278 lora(
         lora_config::SPI,
