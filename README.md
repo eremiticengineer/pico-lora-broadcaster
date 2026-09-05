@@ -99,6 +99,8 @@ Duty Cycle % = (total transmit airtime / elapsed time) x 100
 
 Broadcasting 360 packets per hour would be 360 x 108ms ~ broadcasting for 39s per hour.
 
+The [Semtech LoRa Calculator](https://www.semtech.com/design-support/lora-calculator) does all the calculations.
+
 ## FreeRTOS-Kernal setup for new projects
 
 When creating a FreeRTOS project from scratch, clone the main branch into the project. The main branch at the moment has the necessary pico functionality:
