@@ -33,7 +33,7 @@ Requirement (IR) 2030](https://www.ofcom.org.uk/siteassets/resources/documents/c
 
 **SX1278Config.txPowerDbm** is set to **10** by default to comply with the ODCOM regulations in the UK.
 
-A worked example for the default SX1278Config settings is:
+A worked example, based on the equations in section **4.1.1.7. Time on air** in the [SX1278 datasheet](https://www.semtech.com/products/wireless-rf/lora-connect/sx1278), for the default SX1278Config settings is:
 
 ```
 Symbol airtime
