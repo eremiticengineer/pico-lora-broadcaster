@@ -129,6 +129,14 @@ void lora_send_weather_data_task(void* params) {
             weather.windGust = strtof(p, &end);
             p = end + 1;
 
+            // Find the comma first and copy only that field
+            end = strchr(p, ',');
+            size_t len = std::min(static_cast<size_t>(end - p),
+                sizeof(weather.windDirectionName) - 1);
+            memcpy(weather.windDirectionName, p, len);
+            weather.windDirectionName[len] = '\0';
+            p = end + 1;
+
             weather.windDirectionDegrees = static_cast<decltype(weather.windDirectionDegrees)>(strtoul(p, &end, 10));
             p = end + 1;
 
@@ -153,9 +161,10 @@ void lora_send_weather_data_task(void* params) {
                     "timestamp=%lu "
                     "bootId=%d "
                     "temp=%.1f pressure=%.1f humidity=%.1f "
-                    "wind=%.1f gust=%.1f dir=%u "
-                    "rain=%.1f "
+                    "wind=%.1f gust=%.1f "
+                    "dir=%s deg=%.1f "
                     "lux=%.1f "
+                    "rain=%d "
                     "battery=%.2f\n",
 
                     static_cast<unsigned long>(currentSequence),
@@ -166,9 +175,10 @@ void lora_send_weather_data_task(void* params) {
                     weather.humidity,
                     weather.windSpeed,
                     weather.windGust,
+                    weather.windDirectionName,
                     static_cast<unsigned>(weather.windDirectionDegrees),
-                    weather.rainTipsSinceBoot,
                     weather.lux,
+                    weather.rainTipsSinceBoot,
                     weather.batteryVoltage
                 );
             }
