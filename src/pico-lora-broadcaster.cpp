@@ -106,54 +106,78 @@ void lora_send_weather_data_task(void* params) {
             char* p = queuedMessage.data;
             char* end;
 
-            WeatherPayload weather {};
+            WeatherPayload weather_payload {};
 
-            weather.timestamp =static_cast<decltype(weather.timestamp)>(strtoul(p, &end, 10));
+            // Leapfrog the commas to parse the csv:
+            // p
+            // 947483372,669596416,15.0,100.0,1015.6,7.5,16.9,SW,225,14,2720.4,0.00
+            // strtoul(p, &end, 10)
+            // p        e
+            // 947483372,669596416,15.0,100.0,1015.6,7.5,16.9,SW,225,14,2720.4,0.00
+            // p = end + 1;
+            //          ep
+            // 947483372,669596416,15.0,100.0,1015.6,7.5,16.9,SW,225,14,2720.4,0.00
+            // and so on
+
+            weather_payload.timestamp = static_cast<decltype(weather_payload.timestamp)>
+                (strtoul(p, &end, 10));
             p = end + 1;
 
-            weather.bootId = strtof(p, &end);
+            weather_payload.bootId = static_cast<decltype(weather_payload.bootId)>
+                (strtoul(p, &end, 10));
             p = end + 1;
             
-            weather.temperature = strtof(p, &end);
+            weather_payload.temperature = strtof(p, &end);
             p = end + 1;
 
-            weather.pressure = strtof(p, &end);
+            weather_payload.pressure = strtof(p, &end);
             p = end + 1;
 
-            weather.humidity = strtof(p, &end);
+            weather_payload.humidity = strtof(p, &end);
             p = end + 1;
 
-            weather.windSpeed = strtof(p, &end);
+            weather_payload.windSpeed = strtof(p, &end);
             p = end + 1;
 
-            weather.windGust = strtof(p, &end);
+            weather_payload.windGust = strtof(p, &end);
             p = end + 1;
 
-            // Find the comma first and copy only that field
+            // Wind direction name, find the comma first and copy only that field
+            // currently:
+            // ep
+            // ,SW,225,14,2720.4,0.00
             end = strchr(p, ',');
-            size_t len = std::min(static_cast<size_t>(end - p),
-                sizeof(weather.windDirectionName) - 1);
-            memcpy(weather.windDirectionName, p, len);
-            weather.windDirectionName[len] = '\0';
+            // now:
+            //  p e
+            // ,SW,225,14,2720.4,0.00
+            // ensure we don't copy more than 3 chars into windDirectionName
+            // e.g. NNW is the max we support
+            size_t safe_len = std::min(static_cast<size_t>(end - p), // 2 or 3 depending on direction
+                sizeof(weather_payload.windDirectionName) - 1);      // 3, always space for \0
+            memcpy(weather_payload.windDirectionName, p, safe_len);
+            weather_payload.windDirectionName[safe_len] = '\0';
             p = end + 1;
 
-            weather.windDirectionDegrees = static_cast<decltype(weather.windDirectionDegrees)>(strtoul(p, &end, 10));
+            weather_payload.windDirectionDegrees =
+                static_cast<decltype(weather_payload.windDirectionDegrees)>
+                (strtoul(p, &end, 10));
             p = end + 1;
 
-            weather.lux = strtof(p, &end);
+            weather_payload.lux = strtof(p, &end);
             p = end + 1;
 
-            weather.rainTipsSinceBoot = strtof(p, &end);
+            weather_payload.rainTipsSinceBoot = strtof(p, &end);
             p = end + 1;
 
-            weather.batteryVoltage = strtof(p, &end);
+            weather_payload.batteryVoltage = strtof(p, &end);
             p = end + 1;
 
             std::vector<uint8_t> packet(sizeof(PacketHeader) + sizeof(WeatherPayload));
 
             std::memcpy(packet.data(), &header, sizeof(PacketHeader));
 
-            std::memcpy(packet.data() + sizeof(PacketHeader), &weather, sizeof(WeatherPayload));
+            std::memcpy(packet.data() + sizeof(PacketHeader), &weather_payload,
+                sizeof(WeatherPayload));
 
             if (pLora->send(packet.data(), packet.size())) {
                 printf(
@@ -168,18 +192,18 @@ void lora_send_weather_data_task(void* params) {
                     "battery=%.2f\n",
 
                     static_cast<unsigned long>(currentSequence),
-                    static_cast<unsigned long>(weather.timestamp),
-                    weather.bootId,
-                    weather.temperature,
-                    weather.pressure,
-                    weather.humidity,
-                    weather.windSpeed,
-                    weather.windGust,
-                    weather.windDirectionName,
-                    static_cast<unsigned>(weather.windDirectionDegrees),
-                    weather.lux,
-                    weather.rainTipsSinceBoot,
-                    weather.batteryVoltage
+                    static_cast<unsigned long>(weather_payload.timestamp),
+                    weather_payload.bootId,
+                    weather_payload.temperature,
+                    weather_payload.pressure,
+                    weather_payload.humidity,
+                    weather_payload.windSpeed,
+                    weather_payload.windGust,
+                    weather_payload.windDirectionName,
+                    static_cast<unsigned>(weather_payload.windDirectionDegrees),
+                    weather_payload.lux,
+                    weather_payload.rainTipsSinceBoot,
+                    weather_payload.batteryVoltage
                 );
             }
             else {
