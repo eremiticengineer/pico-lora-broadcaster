@@ -171,6 +171,10 @@ void lora_send_weather_data_task(void* params) {
             p = end + 1;
 
             weather_payload.batteryVoltage = strtof(p, &end);
+            p = end + 1;
+
+            weather_payload.validSensors = static_cast<decltype(weather_payload.validSensors)>
+                (strtoul(p, &end, 10));
 
             std::vector<uint8_t> packet(sizeof(PacketHeader) + sizeof(WeatherPayload));
 
@@ -189,7 +193,8 @@ void lora_send_weather_data_task(void* params) {
                     "dir=%s deg=%u "
                     "lux=%.1f "
                     "rain=%d "
-                    "battery=%.2f\n",
+                    "battery=%.2f "
+                    "sensors=%u\n",
 
                     static_cast<unsigned long>(currentSequence),
                     static_cast<unsigned long>(weather_payload.timestamp),
@@ -203,7 +208,8 @@ void lora_send_weather_data_task(void* params) {
                     static_cast<unsigned>(weather_payload.windDirectionDegrees),
                     weather_payload.lux,
                     weather_payload.rainTipsSinceBoot,
-                    weather_payload.batteryVoltage
+                    weather_payload.batteryVoltage,
+                    weather_payload.validSensors
                 );
             }
             else {
