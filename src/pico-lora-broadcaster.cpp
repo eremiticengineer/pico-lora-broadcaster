@@ -110,13 +110,13 @@ void lora_send_weather_data_task(void* params) {
 
             // Leapfrog the commas to parse the csv:
             // p
-            // 947483372,669596416,15.0,100.0,1015.6,7.5,16.9,SW,225,14,2720.4,0.00
+            // 947483372,669596416,15.0,1015.6,100.0,7.5,16.9,SW,225,14,2720.4,0.00
             // strtoul(p, &end, 10)
             // p        e
-            // 947483372,669596416,15.0,100.0,1015.6,7.5,16.9,SW,225,14,2720.4,0.00
+            // 947483372,669596416,15.0,1015.6,100.0,7.5,16.9,SW,225,14,2720.4,0.00
             // p = end + 1;
             //          ep
-            // 947483372,669596416,15.0,100.0,1015.6,7.5,16.9,SW,225,14,2720.4,0.00
+            // 947483372,669596416,15.0,1015.6,100.0,7.5,16.9,SW,225,14,2720.4,0.00
             // and so on
 
             weather_payload.timestamp = static_cast<decltype(weather_payload.timestamp)>
@@ -166,11 +166,11 @@ void lora_send_weather_data_task(void* params) {
             weather_payload.lux = strtof(p, &end);
             p = end + 1;
 
-            weather_payload.rainTipsSinceBoot = strtof(p, &end);
+            weather_payload.rainTipsSinceBoot = static_cast<decltype(weather_payload.rainTipsSinceBoot)>
+                (strtoul(p, &end, 10));
             p = end + 1;
 
             weather_payload.batteryVoltage = strtof(p, &end);
-            p = end + 1;
 
             std::vector<uint8_t> packet(sizeof(PacketHeader) + sizeof(WeatherPayload));
 
@@ -183,10 +183,10 @@ void lora_send_weather_data_task(void* params) {
                 printf(
                     "TX seq=%lu "
                     "timestamp=%lu "
-                    "bootId=%d "
+                    "bootId=%u "
                     "temp=%.1f pressure=%.1f humidity=%.1f "
                     "wind=%.1f gust=%.1f "
-                    "dir=%s deg=%.1f "
+                    "dir=%s deg=%u "
                     "lux=%.1f "
                     "rain=%d "
                     "battery=%.2f\n",
@@ -221,14 +221,16 @@ void uart_receive_task(void* params) {
     while (true) {
         std::string received_message;
         while (pUartComms->receive(received_message)) {
-            gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            sleep_ms(500);
-            gpio_put(PICO_DEFAULT_LED_PIN, 0);
-            sleep_ms(500);
-            gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            sleep_ms(500);
-            gpio_put(PICO_DEFAULT_LED_PIN, 0);
             printf("received: '%s'\n", received_message.c_str());
+
+            // Phantom byte appears ahead of first transmission from the station
+            // https://github.com/raspberrypi/pico-sdk/issues/1144
+            // "tie the RX line to 3.3v via the 10k resistor the issue goes away"
+            while (!received_message.empty() &&
+                !std::isdigit(static_cast<unsigned char>(received_message.front()))) {
+                    received_message.erase(received_message.begin());
+            }
+
             LoRaMessage lora_message {};
             std::strncpy(lora_message.data, received_message.c_str(), sizeof(lora_message.data) - 1);
             xQueueSend(lora_send_queue, &lora_message, portMAX_DELAY);
